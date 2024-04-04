@@ -1,0 +1,2 @@
+CompileFlags: 
+  Add: [-xc, -Wall, -Wextra, -I/usr/lib/gcc/arm-none-eabi/13.2.0/include -I./include, -nostdlib]
