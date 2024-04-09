@@ -22,6 +22,7 @@ typedef unsigned char byte;
 
 #define true  ((bool)1)
 #define false ((bool)0)
+#define NULL ((void*)0)
 
 #define INTERRUPT_SERVICE_ROUTINE_VECTOR_LEN 256
 
@@ -262,6 +263,86 @@ enum FLASH_ACCESS_CONTROL : u32
 	FLASH_ACCESS_CONTROL__LATENCY_SHIFT	= 0UL,
 #define FLASH_ACCESS_CONTROL__LATENCY(n)	(((n) & 0xFUL) << FLASH_ACCESS_CONTROL__LATENCY_SHIFT)
 #define FLASH_ACCESS_CONTROL__LATENCY_GET(mask)	(((mask) >> FLASH_ACCESS_CONTROL__LATENCY_SHIFT) & 0xFUL)
+};
+
+
+STATIC struct USART_config *const USART_config_1 = (struct USART_config*)0x40011000;
+STATIC struct USART_config *const USART_config_2 = (struct USART_config*)0x40004400;
+STATIC struct USART_config *const USART_config_6 = (struct USART_config*)0x40011400;
+struct __attribute__((packed)) USART_config
+{
+	volatile u16 status;               u16 const reserved_status;
+	volatile u16 data;                 u16 const reserved_data;
+	volatile u16 baud_rate;            u16 const reserved_baud_rate;
+	volatile u16 control1;             u16 const reserved_control1;
+	volatile u16 control2;             u16 const reserved_control2;
+	volatile u16 control3;             u16 const reserved_control3;
+	volatile u16 guard_time_prescaler; u16 const reserved_guard_time_prescaler;
+};
+
+enum USART_STATUS : u32
+{
+	USART_STATUS__CTS_LINE_DETECTED       = 1UL << 9UL,
+	USART_STATUS__LIN_BREAK_DETECTED      = 1UL << 8UL,
+	USART_STATUS__TRANSMIT_REGISTER_EMPTY = 1UL << 7UL,
+	USART_STATUS__TRANSMISSION_COMPLETE   = 1UL << 6UL,
+	USART_STATUS__READ_REGISTER_NOT_EMPTY = 1UL << 5UL,
+	USART_STATUS__IDLE_LINE_DETECTED      = 1UL << 4UL,
+	USART_STATUS__OVERRUN_ERROR_DETECTED  = 1UL << 3UL,
+	USART_STATUS__NOISE_DETECTED          = 1UL << 2UL,
+	USART_STATUS__FRAMING_ERROR_DETECTED  = 1UL << 1UL,
+	USART_STATUS__PARITY_ERROR_DETECTED   = 1UL << 0UL,
+};
+
+enum USART_BAUD_RATE : u32
+{
+	USART_BAUD_RATE__MANTISSA_SHIFT     = 4,
+	USART_BAUD_RATE__MANTISSA_BITS      = 12,
+#define USART_BAUD_RATE__MANTISSA(n)        ((n & ((1UL << USART_BAUD_RATE__MANTISSA_BITS) - 1)) << USART_BAUD_RATE__MANTISSA_SHIFT)
+#define USART_BAUD_RATE__MANTISSA_GET(MASK) ((MASK >> USART_BAUD_RATE__MANTISSA_SHIFT) & ((1UL << USART_BAUD_RATE__MANTISSA_BITS) - 1))
+
+	USART_BAUD_RATE__FRACTION_SHIFT     = 0,
+	USART_BAUD_RATE__FRACTION_BITS      = 4,
+#define USART_BAUD_RATE__FRACTION(n)        ((n & ((1UL << USART_BAUD_RATE__FRACTION_BITS) - 1)) << USART_BAUD_RATE__FRACTION_SHIFT)
+#define USART_BAUD_RATE__FRACTION_GET(MASK) ((MASK >> USART_BAUD_RATE__FRACTION_SHIFT) & ((1UL << USART_BAUD_RATE__FRACTION_BITS) - 1))
+};
+
+enum USART_CONTROL1 : u32
+{
+	USART_CONTROL1__8X_OVERSAMPLE                     = 1UL << 15UL,
+	USART_CONTROL1__USART_ENABLE                      = 1UL << 13UL,
+	USART_CONTROL1__9_BIT_WORD                        = 1UL << 12UL,
+	USART_CONTROL1__WAKEUP_ADDRESS                    = 1UL << 11UL,
+	USART_CONTROL1__PARITY_ENABLE                     = 1UL << 10UL,
+	USART_CONTROL1__PARITY_ODD                        = 1UL <<  9UL,
+	USART_CONTROL1__INTERRUPT_PARITY                  = 1UL <<  8UL,
+	USART_CONTROL1__INTERRUPT_TRANSMIT_REGISTER_EMPTY = 1UL <<  7UL,
+	USART_CONTROL1__INTERRUPT_TRANSMSSION_COMPLETE    = 1UL <<  6UL,
+	USART_CONTROL1__INTERRUPT_READ_REGISTER_NOT_EMPTY = 1UL <<  5UL,
+	USART_CONTROL1__INTERRUPT_IDLE_LINE_DETECTED      = 1UL <<  4UL,
+	USART_CONTROL1__TRANSMITTER_ENABLE                = 1UL <<  3UL,
+	USART_CONTROL1__RECEIVER_ENABLE                   = 1UL <<  2UL,
+	USART_CONTROL1__RECEIVER_WAKEUP                   = 1UL <<  1UL,
+	USART_CONTROL1__SEND_BREAK                        = 1UL <<  1UL,
+};
+
+enum USART_CONTROL2 : u32
+{
+	USART_CONTROL2__LIN_MODE_ENABLE              = 1UL << 14UL,
+	USART_CONTROL2__STOP_BITS_1                  = 0UL << 12UL,
+	USART_CONTROL2__STOP_BITS_05	             = 1UL << 12UL,
+	USART_CONTROL2__STOP_BITS_2                  = 2UL << 12UL,
+	USART_CONTROL2__STOP_BITS_15                 = 3UL << 12UL,
+	USART_CONTROL2__CLOCK_ENABLE                 = 1UL << 11UL,
+	USART_CONTROL2__CLOCK_POLARITY_HIGH          = 1UL << 10UL,
+	USART_CONTROL2__CLOCK_PHASE                  = 1UL <<  9UL,
+	USART_CONTROL2__LAST_BIT_CLOCK_PULSE         = 1UL <<  8UL,
+	USART_CONTROL2__INTERRUPT_LIN_BREAK_DETECTED = 1UL <<  6UL,
+	USART_CONTROL2__LIN_BREAK_DETECTION_11_BIT   = 1UL <<  5UL,
+	USART_CONTROL2__USART_NODE_ADDRESS_SHIFT     = 0,
+	USART_CONTROL2__USART_NODE_ADDRESS_BITS      = 4,
+#define USART_CONTROL2__USART_NODE_ADDRESS(n)        = ((n & ((1UL << USART_CONTROL2__USART_NODE_ADDRESS_BITS) - 1)) << USART_CONTROL2__USART_NODE_ADDRESS_SHIFT)
+#define USART_CONTROL2__USART_NODE_ADDRESS_GET(mask) = ((mask >> USART_CONTROL2__USART_NODE_ADDRESS_SHIFT) & ((1UL << USART_CONTROL2__USART_NODE_ADDRESS_BITS) - 1))
 };
 
 #endif // BAREMETAL_H
