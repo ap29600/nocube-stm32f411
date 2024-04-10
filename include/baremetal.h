@@ -4,25 +4,24 @@
 #define STATIC __attribute__((unused)) static
 #define INLINE __attribute__((always_inline)) inline
 
-typedef unsigned char bool;
+#include <inttypes.h>
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
 
-typedef unsigned long size_t;
-typedef unsigned long uintptr_t;
+typedef uint64_t u64;
+typedef int64_t i64;
 
-typedef unsigned long u32;
-typedef          long i32;
+typedef uint32_t u32;
+typedef int32_t i32;
 
-typedef unsigned int u16;
-typedef          int i16;
+typedef uint16_t u16;
+typedef int16_t i16;
 
-typedef unsigned char u8;
-typedef          char i8;
+typedef uint8_t u8;
+typedef int8_t i8;
 
 typedef unsigned char byte;
-
-#define true  ((bool)1)
-#define false ((bool)0)
-#define NULL ((void*)0)
 
 #define INTERRUPT_SERVICE_ROUTINE_VECTOR_LEN 256
 
@@ -53,13 +52,33 @@ extern struct memory_section __bss_section_end;
 
 extern u32 interrupt_service_routine_vector[INTERRUPT_SERVICE_ROUTINE_VECTOR_LEN];
 
-STATIC struct GPIO_config *const GPIO_config_A = (struct GPIO_config*)0x40020000;
-STATIC struct GPIO_config *const GPIO_config_B = (struct GPIO_config*)0x40020400;
-STATIC struct GPIO_config *const GPIO_config_C = (struct GPIO_config*)0x40020800;
-STATIC struct GPIO_config *const GPIO_config_D = (struct GPIO_config*)0x40020c00;
-STATIC struct GPIO_config *const GPIO_config_E = (struct GPIO_config*)0x40021000;
-STATIC struct GPIO_config *const GPIO_config_H = (struct GPIO_config*)0x40021c00;
-struct __attribute__((packed)) GPIO_config {
+// ===============[ Memory Map ]=================
+//
+// [memory map](file://spec.pdf#page=38)
+
+STATIC struct GPIO_config *const GPIOA = (struct GPIO_config*)0x40020000;
+STATIC struct GPIO_config *const GPIOB = (struct GPIO_config*)0x40020400;
+STATIC struct GPIO_config *const GPIOC = (struct GPIO_config*)0x40020800;
+STATIC struct GPIO_config *const GPIOD = (struct GPIO_config*)0x40020c00;
+STATIC struct GPIO_config *const GPIOE = (struct GPIO_config*)0x40021000;
+STATIC struct GPIO_config *const GPIOH = (struct GPIO_config*)0x40021c00;
+STATIC struct RCC_config *const RCC = (struct RCC_config*)0x40023800;
+STATIC struct PWR_config *const PWR = (struct PWR_config*)0x40007000;
+STATIC struct FLASH_config *const FLASH = (struct FLASH_config*)0x40023c00;
+STATIC struct USART_config *const USART1 = (struct USART_config*)0x40011000;
+STATIC struct USART_config *const USART2 = (struct USART_config*)0x40004400;
+STATIC struct USART_config *const USART6 = (struct USART_config*)0x40011400;
+
+
+
+// =================[ GPIO ]===================
+//
+// [register functions](file://spec.pdf#page=157)
+//
+// [register offsets](file://spec.pdf#page=163)
+
+struct __attribute__((packed)) GPIO_config
+{
 	volatile u32 mode;
 	volatile u32 output_type;
 	volatile u32 output_speed;
@@ -68,55 +87,29 @@ struct __attribute__((packed)) GPIO_config {
 	volatile u32 output_data;
 	volatile u32 bit_set_reset;
 	volatile u32 port_configuration_lock;
-	volatile u32 alternate_function_low;
-	volatile u32 alternate_function_high;
+	volatile u64 alternate_function;
 };
 
-enum GPIO_PIN : u32 {
-	GPIO_PIN_00 = 1 <<  0,
-	GPIO_PIN_01 = 1 <<  1,
-	GPIO_PIN_02 = 1 <<  2,
-	GPIO_PIN_03 = 1 <<  3,
-	GPIO_PIN_04 = 1 <<  4,
-	GPIO_PIN_05 = 1 <<  5,
-	GPIO_PIN_06 = 1 <<  6,
-	GPIO_PIN_07 = 1 <<  7,
-	GPIO_PIN_08 = 1 <<  8,
-	GPIO_PIN_09 = 1 <<  9,
-	GPIO_PIN_10 = 1 << 10,
-	GPIO_PIN_11 = 1 << 11,
-	GPIO_PIN_12 = 1 << 12,
-	GPIO_PIN_13 = 1 << 13,
-	GPIO_PIN_14 = 1 << 14,
-	GPIO_PIN_15 = 1 << 15,
-};
+// Bit set generation macros.
+//
+// The WPIN and QPIN macros are useful for broadcasting packed enumeration
+// values to multiple pins through multiplication:
+//
+// ```
+// TWO_BIT_ENUM * (GPIO_WPIN(2) | GPIO_WPIN(3))
+// FOUR_BIT_ENUM * (GPIO_QPIN(2) | GPIO_QPIN(3))
+// ```
+//
+// invocations of `GPIO_QPIN` produce a 64 bit value.
+//
+#define GPIO_PIN(n)	((u32)1 << (n))
+#define GPIO_WPIN(n)	((u32)1 << (2 * (n)))
+#define GPIO_QPIN(n)	((u64)1 << (4 * (n)))
 
-/*
- * defines the lsb of bit pairs corresponding to GPIO pins.
- * can be used to broadcast configuration numbers to several pins through multiplication:
- *
- * `CONFIG_NUMBER_BIT_PAIR * (GPIO_WPIN_XX | GPIO_WPIN_YY)`
- *
- */
-enum GPIO_WPIN : u32 {
-	GPIO_WPIN_00 = 1 <<  0,
-	GPIO_WPIN_01 = 1 <<  2,
-	GPIO_WPIN_02 = 1 <<  4,
-	GPIO_WPIN_03 = 1 <<  6,
-	GPIO_WPIN_04 = 1 <<  8,
-	GPIO_WPIN_05 = 1 << 10,
-	GPIO_WPIN_06 = 1 << 12,
-	GPIO_WPIN_07 = 1 << 14,
-	GPIO_WPIN_08 = 1 << 16,
-	GPIO_WPIN_09 = 1 << 18,
-	GPIO_WPIN_10 = 1 << 20,
-	GPIO_WPIN_11 = 1 << 22,
-	GPIO_WPIN_12 = 1 << 24,
-	GPIO_WPIN_13 = 1 << 26,
-	GPIO_WPIN_14 = 1 << 28,
-	GPIO_WPIN_15 = 1 << 30,
-};
-
+// Set modes for individual pins in a port.
+// Two bit enum, broadcast with GPIO_WPIN.
+//
+// When set to `GPIO_MODE__ALTERNATE`, the corresponding bits in alternate_function
 enum GPIO_MODE : u32 
 {
 	GPIO_MODE__INPUT     = 0b00UL,
@@ -125,12 +118,16 @@ enum GPIO_MODE : u32
 	GPIO_MODE__ANALOG    = 0b11UL,
 };
 
+// Set output type for individual pins in a port.
+// One bit enum, broadcast with GPIO_PIN.
 enum GPIO_OUTPUT_TYPE : u32
 {
 	GPIO_OUTPUT_TYPE__PUSH_PULL  = 0b0UL,
 	GPIO_OUTPUT_TYPE__OPEN_DRAIN = 0b1UL,
 };
 
+// Set speed for individual pins in a port.
+// Two bit enum, broadcast with `GPIO_WPIN`.
 enum GPIO_OUTPUT_SPEED : u32
 {
 	GPIO_OUTPUT_SPEED__LOW     = 0b00UL,
@@ -139,6 +136,8 @@ enum GPIO_OUTPUT_SPEED : u32
 	GPIO_OUTPUT_SPEED__HIGHEST = 0b11UL,
 };
 
+// Set pull up/down for individual pins in a port.
+// Two bit enum, broadcast with GPIO_WPIN.
 enum GPIO_PULL_TYPE : u32 
 {
 	GPIO_PULL_TYPE__NONE = 0b00UL,
@@ -146,78 +145,76 @@ enum GPIO_PULL_TYPE : u32
 	GPIO_PULL_TYPE__DOWN = 0b10UL,
 };
 
+// Set or reset individual pins in a port, without affecting the others.
+// use masks built with `GPIO_PIN`.
 enum GPIO_BIT_SET_RESET : u32 
 {
-	GPIO_BIT_SET_RESET__SET_SHIFT	= 16UL,
-#define GPIO_BIT_SET_RESET__SET(mask)	((mask & 0xFFFFUL) << GPIO_BIT_SET_RESET__SET_SHIFT)
-	GPIO_BIT_SET_RESET__RESET_SHIFT = 0UL,
-#define GPIO_BIT_SET_RESET__RESET(mask)	((mask & 0xFFFFUL) << GPIO_BIT_SET_RESET__RESET_SHIFT)
+	GPIO_BIT_SET_RESET__RESET_SHIFT = 16UL,
+#define GPIO_BIT_SET_RESET__RESET(mask)	(((mask) & 0xFFFFUL) << GPIO_BIT_SET_RESET__RESET_SHIFT)
+	GPIO_BIT_SET_RESET__SET_SHIFT	= 0UL,
+#define GPIO_BIT_SET_RESET__SET(mask)	(((mask) & 0xFFFFUL) << GPIO_BIT_SET_RESET__SET_SHIFT)
 };
 
+// ===============[ RCC ]=================
+//
+// [register offsets](file://spec.pdf#page=136)
+//
+// [register functions](file://spec.pdf#page=106)
 
-
-STATIC struct RCC_config *const RCC_config = (struct RCC_config*)0x40023800;
 struct __attribute__((packed)) RCC_config 
 {
-	volatile u32 clock_control;	 	/*!< RCC clock control register,				Address offset: 0x00 */
-	volatile u32 PLL_config;	     	/*!< RCC PLL configuration register,				Address offset: 0x04 */
-	volatile u32 clock_config;	   	/*!< RCC clock configuration register,				Address offset: 0x08 */
-	volatile u32 interrupt;	      		/*!< RCC clock interrupt register,				Address offset: 0x0C */
-	volatile u32 AHB1_peripheral_reset;  	/*!< RCC AHB1 peripheral reset register,			Address offset: 0x10 */
-	volatile u32 AHB2_peripheral_reset;  	/*!< RCC AHB2 peripheral reset register,			Address offset: 0x14 */
-	volatile u32 AHB3_peripheral_reset;  	/*!< RCC AHB3 peripheral reset register,			Address offset: 0x18 */
-		 u32 RESERVED0;	      		/*!< Reserved, 0x1C								     */
-	volatile u32 APB1_peripheral_reset;  	/*!< RCC APB1 peripheral reset register,			Address offset: 0x20 */
-	volatile u32 APB2_peripheral_reset;  	/*!< RCC APB2 peripheral reset register,			Address offset: 0x24 */
-		 u32 RESERVED1[2];	   	/*!< Reserved, 0x28-0x2C							     */
-	volatile u32 AHB1_peripheral_enable; 	/*!< RCC AHB1 peripheral clock register,			Address offset: 0x30 */
-	volatile u32 AHB2_peripheral_enable; 	/*!< RCC AHB2 peripheral clock register,			Address offset: 0x34 */
-	volatile u32 AHB3_peripheral_enable; 	/*!< RCC AHB3 peripheral clock register,			Address offset: 0x38 */
-		 u32 RESERVED2;	      		/*!< Reserved, 0x3C								     */
-	volatile u32 APB1_peripheral_enable;	/*!< RCC APB1 peripheral clock enable register,			Address offset: 0x40 */
-	volatile u32 APB2_peripheral_enable;	/*!< RCC APB2 peripheral clock enable register,			Address offset: 0x44 */
-		 u32 RESERVED3[2];  		/*!< Reserved, 0x48-0x4C							     */
-	volatile u32 AHB1_low_power_enable;	/*!< RCC AHB1 peripheral clock enable in low power mode register,	Address offset: 0x50 */
-	volatile u32 AHB2_low_power_enable;	/*!< RCC AHB2 peripheral clock enable in low power mode register,	Address offset: 0x54 */
-	volatile u32 AHB3_low_power_enable;	/*!< RCC AHB3 peripheral clock enable in low power mode register,	Address offset: 0x58 */
-		 u32 RESERVED4;     		/*!< Reserved, 0x5C								     */
-	volatile u32 APB1_low_power_enable;	/*!< RCC APB1 peripheral clock enable in low power mode register,	Address offset: 0x60 */
-	volatile u32 APB2_low_power_enable;	/*!< RCC APB2 peripheral clock enable in low power mode register,	Address offset: 0x64 */
-		 u32 RESERVED5[2];  		/*!< Reserved, 0x68-0x6C							     */
-	volatile u32 backup_domain;		/*!< RCC Backup domain control register,			Address offset: 0x70 */
-	volatile u32 clock_control_status;	/*!< RCC clock control & status register,			Address offset: 0x74 */
-		 u32 RESERVED6[2];		/*!< Reserved, 0x78-0x7C							     */
-	volatile u32 spread_spectrum_clock_generation;	/*!< RCC spread spectrum clock generation register,	Address offset: 0x80 */
-	volatile u32 PLLI2S_config;		/*!< RCC PLLI2S configuration register,			  	Address offset: 0x84 */
-		 u32 RESERVED7[1];		/*!< Reserved, 0x88								     */
-	volatile u32 dedicated_clocks_config;	/*!< RCC Dedicated Clocks configuration register,		Address offset: 0x8C */
+	volatile u32 clock_control;
+	volatile u32 PLL_config;
+	volatile u32 clock_config;
+	volatile u32 interrupt;
+	volatile u32 AHB1_peripheral_reset;
+	volatile u32 AHB2_peripheral_reset;
+	volatile u32 AHB3_peripheral_reset;
+		 u32 RESERVED0;
+	volatile u32 APB1_peripheral_reset;
+	volatile u32 APB2_peripheral_reset;
+		 u32 RESERVED1[2];
+	volatile u32 AHB1_peripheral_enable;
+	volatile u32 AHB2_peripheral_enable;
+	volatile u32 AHB3_peripheral_enable;
+		 u32 RESERVED2;
+	volatile u32 APB1_peripheral_enable;
+	volatile u32 APB2_peripheral_enable;
+		 u32 RESERVED3[2];
+	volatile u32 AHB1_low_power_enable;
+	volatile u32 AHB2_low_power_enable;
+	volatile u32 AHB3_low_power_enable;
+		 u32 RESERVED4;
+	volatile u32 APB1_low_power_enable;
+	volatile u32 APB2_low_power_enable;
+		 u32 RESERVED5[2];
+	volatile u32 backup_domain;
+	volatile u32 clock_control_status;
+		 u32 RESERVED6[2];
+	volatile u32 spread_spectrum_clock_generation;
+	volatile u32 PLLI2S_config;
+		 u32 RESERVED7[1];
+	volatile u32 dedicated_clocks_config;
 };
 
 enum RCC_CONTROL : u32
 {
-	RCC_CONTROL__PLLI2S_READY	= 1UL << 27UL,
-	RCC_CONTROL__PLLI2S_ENABLE	= 1UL << 26UL,
-
-	RCC_CONTROL__PLL_READY 		= 1UL << 25UL,
-	RCC_CONTROL__PLL_ENABLE 	= 1UL << 24UL,
-
-	RCC_CONTROL__CSS_ENABLE		= 1UL << 19UL,
-
-	RCC_CONTROL__HSE_BYPASS		= 1UL << 18UL,
-	RCC_CONTROL__HSE_READY		= 1UL << 17UL,
-	RCC_CONTROL__HSE_ENABLE		= 1UL << 16UL,
-
+	RCC_CONTROL__PLLI2S_READY		= 1UL << 27UL,
+	RCC_CONTROL__PLLI2S_ENABLE		= 1UL << 26UL,
+	RCC_CONTROL__PLL_READY 			= 1UL << 25UL,
+	RCC_CONTROL__PLL_ENABLE 		= 1UL << 24UL,
+	RCC_CONTROL__CSS_ENABLE			= 1UL << 19UL,
+	RCC_CONTROL__HSE_BYPASS			= 1UL << 18UL,
+	RCC_CONTROL__HSE_READY			= 1UL << 17UL,
+	RCC_CONTROL__HSE_ENABLE			= 1UL << 16UL,
 	RCC_CONTROL__HSI_CALIBRATION_SHIFT	= 8,
 #define RCC_CONTROL__HSE_CALIBRATION(n)		(((n) & 0xFF) << RCC_CONTROL__HSI_CALIBRATION_SHIFT)
 #define RCC_CONTROL__HSE_CALIBRATION_GET(mask)	(((mask) >> RCC_CONTROL__HSI_CALIBRATION_SHIFT) & 0xFF)
-
 	RCC_CONTROL__HSI_TRIM_SHIFT		= 4,
-#define RCC_CONTROL__HSE_TRIM(n)	(((n) & 0x1F) << RCC_CONTROL__HSI_TRIM_SHIFT)
-#define RCC_CONTROL__HSE_TRIM_GET(mask)	(((mask) >> RCC_CONTROL__HSI_TRIM_SHIFT) & 0x1F)
-
-	RCC_CONTROL__HSI_READY		= 1ULL << 1UL,
-	RCC_CONTROL__HSI_ENABLE		= 1ULL << 0UL,
-
+#define RCC_CONTROL__HSE_TRIM(n)		(((n) & 0x1F) << RCC_CONTROL__HSI_TRIM_SHIFT)
+#define RCC_CONTROL__HSE_TRIM_GET(mask)		(((mask) >> RCC_CONTROL__HSI_TRIM_SHIFT) & 0x1F)
+	RCC_CONTROL__HSI_READY			= 1ULL << 1UL,
+	RCC_CONTROL__HSI_ENABLE			= 1ULL << 0UL,
 };
 
 enum RCC_AHB1_PERIPHERAL_ENABLE : u32
@@ -233,27 +230,44 @@ enum RCC_AHB1_PERIPHERAL_ENABLE : u32
 	RCC_AHB1_PERIPHERAL_ENABLE__GPIOA	= 1UL <<  0UL,
 };
 
+enum RCC_APB1_PERIPHERAL_ENABLE : u32
+{
+	RCC_APB1_PERIPHERAL_ENABLE__PWR	 		= 1UL << 28UL,
+	RCC_APB1_PERIPHERAL_ENABLE__I2C3		= 1UL << 23UL,
+	RCC_APB1_PERIPHERAL_ENABLE__I2C2		= 1UL << 22UL,
+	RCC_APB1_PERIPHERAL_ENABLE__I2C1		= 1UL << 21UL,
+	RCC_APB1_PERIPHERAL_ENABLE__USART2		= 1UL << 17UL,
+	RCC_APB1_PERIPHERAL_ENABLE__SPI3		= 1UL << 15UL,
+	RCC_APB1_PERIPHERAL_ENABLE__SPI2		= 1UL << 14UL,
+	RCC_APB1_PERIPHERAL_ENABLE__WINDOW_WATCHDOG	= 1UL << 11UL,
+	RCC_APB1_PERIPHERAL_ENABLE__TIM5		= 1UL << 3UL,
+	RCC_APB1_PERIPHERAL_ENABLE__TIM4		= 1UL << 2UL,
+	RCC_APB1_PERIPHERAL_ENABLE__TIM3		= 1UL << 1UL,
+	RCC_APB1_PERIPHERAL_ENABLE__TIM2		= 1UL << 0UL,
+};
 
-STATIC struct PWR_config *const PWR_config = (struct PWR_config*)0x40007000;
 struct __attribute__((packed)) PWR_config 
 {
-	volatile u32 control;		/*!< PWR power control register,        Address offset: 0x00 */
-	volatile u32 control_status;	/*!< PWR power control/status register, Address offset: 0x04 */
+	volatile u32 control;
+	volatile u32 control_status;
 };
 
+// =================[ FLASH ]===================
+//
+// [register offsets](file://spec.pdf#page=66)
+//
+// [register functions](file://spec.pdf#page=59)
 
-STATIC struct FLASH_config *const FLASH_config = (struct FLASH_config*)0x40023c00;
 struct __attribute__((packed)) FLASH_config
 {
-	volatile u32 access_control;	/*!< FLASH access control register,   Address offset: 0x00 */
-	volatile u32 key;		/*!< FLASH key register,              Address offset: 0x04 */
-	volatile u32 option_key;	/*!< FLASH option key register,       Address offset: 0x08 */
-	volatile u32 status;		/*!< FLASH status register,           Address offset: 0x0C */
-	volatile u32 control;		/*!< FLASH control register,          Address offset: 0x10 */
-	volatile u32 option_control;	/*!< FLASH option control register ,  Address offset: 0x14 */
-	volatile u32 option_control_1;	/*!< FLASH option control register 1, Address offset: 0x18 */
+	volatile u32 access_control;
+	volatile u32 key;
+	volatile u32 option_key;
+	volatile u32 status;
+	volatile u32 control;
+	volatile u32 option_control;
+	volatile u32 option_control_1;
 };
-
 
 enum FLASH_ACCESS_CONTROL : u32
 {
@@ -265,10 +279,14 @@ enum FLASH_ACCESS_CONTROL : u32
 #define FLASH_ACCESS_CONTROL__LATENCY_GET(mask)	(((mask) >> FLASH_ACCESS_CONTROL__LATENCY_SHIFT) & 0xFUL)
 };
 
+// TODO: document flag values for the other registers
 
-STATIC struct USART_config *const USART_config_1 = (struct USART_config*)0x40011000;
-STATIC struct USART_config *const USART_config_2 = (struct USART_config*)0x40004400;
-STATIC struct USART_config *const USART_config_6 = (struct USART_config*)0x40011400;
+// =================[ USART ]===================
+//
+// [register offsets](file://spec.pdf#page=557)
+// 
+// [register functions](file://spec.pdf#page=547)
+
 struct __attribute__((packed)) USART_config
 {
 	volatile u16 status;               u16 const reserved_status;
@@ -280,6 +298,7 @@ struct __attribute__((packed)) USART_config
 	volatile u16 guard_time_prescaler; u16 const reserved_guard_time_prescaler;
 };
 
+// [status](file://spec.pdf#page=547)
 enum USART_STATUS : u32
 {
 	USART_STATUS__CTS_LINE_DETECTED       = 1UL << 9UL,
@@ -294,6 +313,7 @@ enum USART_STATUS : u32
 	USART_STATUS__PARITY_ERROR_DETECTED   = 1UL << 0UL,
 };
 
+// [baud rate](file://spec.pdf#page=550)
 enum USART_BAUD_RATE : u32
 {
 	USART_BAUD_RATE__MANTISSA_SHIFT     = 4,
@@ -307,6 +327,7 @@ enum USART_BAUD_RATE : u32
 #define USART_BAUD_RATE__FRACTION_GET(mask) (((mask) >> USART_BAUD_RATE__FRACTION_SHIFT) & ((1UL << USART_BAUD_RATE__FRACTION_BITS) - 1))
 };
 
+// [control 1](file://spec.pdf#page=550)
 enum USART_CONTROL1 : u32
 {
 	USART_CONTROL1__8X_OVERSAMPLE                     = 1UL << 15UL,
@@ -326,6 +347,7 @@ enum USART_CONTROL1 : u32
 	USART_CONTROL1__SEND_BREAK                        = 1UL <<  0UL,
 };
 
+// [control 2](file://spec.pdf#page=553)
 enum USART_CONTROL2 : u32
 {
 	USART_CONTROL2__LIN_MODE_ENABLE              = 1UL << 14UL,
@@ -345,6 +367,7 @@ enum USART_CONTROL2 : u32
 #define USART_CONTROL2__USART_NODE_ADDRESS_GET(mask) = (((mask) >> USART_CONTROL2__USART_NODE_ADDRESS_SHIFT) & ((1UL << USART_CONTROL2__USART_NODE_ADDRESS_BITS) - 1))
 };
 
+// [control 3](file://spec.pdf#page=554)
 enum USART_CONTROL3 : u32
 {
 	USART_CONTROL3__ONE_SAMPLE_BIT_MODE              = 1UL << 11UL,
@@ -361,6 +384,7 @@ enum USART_CONTROL3 : u32
 	USART_CONTROL3__INTERRUPT_FRAMING_ERROR_DETECTED = 1UL << 0UL,
 };
 
+// [guard time/prescaler](file://spec.pdf#page=556)
 enum USART_GUARD_TIME_PRESCALER : u32
 {
 	USART_GUARD_TIME_PRESCALER__GUARD_TIME_SHIFT     = 8UL,
@@ -374,4 +398,5 @@ enum USART_GUARD_TIME_PRESCALER : u32
 #define USART_GUARD_TIME_PRESCALER__PRESCALER_GET(mask)  (((mask) >> USART_GUARD_TIME_PRESCALER__PRESCALER_SHIFT) & ((USART_GUARD_TIME_PRESCALER__PRESCALER_BITS) - 1))
 
 };
+
 #endif // BAREMETAL_H
