@@ -1,7 +1,7 @@
 CC = arm-none-eabi-gcc
 OBJDUMP = arm-none-eabi-objdump
 
-FLAGS = -mcpu=cortex-m4 -nostdlib -mthumb
+FLAGS = -mcpu=cortex-m4 -nostdlib -mthumb -Wno-builtin-declaration-mismatch -s
 OPT = -Os
 
 BIN_DIR     = ./bin
@@ -10,6 +10,8 @@ INCLUDE_DIR = ./include
 
 SRC_FILES     = $(wildcard $(SRC_DIR)/*.c)
 INCLUDE_FILES = $(wildcard $(INCLUDE_DIR)/*.h)
+
+.PHONY: default clean flash inspect
 
 default: $(BIN_DIR)/bin.elf
 

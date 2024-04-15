@@ -1,5 +1,7 @@
 #include "../include/baremetal.h"
 
+// TODO: this is incorrect for overlapping memory regions where `(uintptr_t)destination > (uintptr_t)source`,
+// we should detect that situation and copy from the back.
 void *memmove(void *destination, void const *source, size_t size) 
 {
 	byte *b_destination = destination;
@@ -59,4 +61,3 @@ u32 interrupt_service_routine_vector[INTERRUPT_SERVICE_ROUTINE_VECTOR_LEN] __att
 	(u32)&default_handler_procedure,
 	(u32)&default_handler_procedure,
 }; 
-
