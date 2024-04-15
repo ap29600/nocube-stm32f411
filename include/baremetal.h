@@ -289,13 +289,13 @@ enum FLASH_ACCESS_CONTROL : u32
 
 struct __attribute__((packed)) USART_config
 {
-	volatile u16 status;               u16 const reserved_status;
-	volatile u16 data;                 u16 const reserved_data;
-	volatile u16 baud_rate;            u16 const reserved_baud_rate;
-	volatile u16 control1;             u16 const reserved_control1;
-	volatile u16 control2;             u16 const reserved_control2;
-	volatile u16 control3;             u16 const reserved_control3;
-	volatile u16 guard_time_prescaler; u16 const reserved_guard_time_prescaler;
+	volatile u32 status;
+	volatile u32 data;
+	volatile u32 baud_rate;
+	volatile u32 control1;
+	volatile u32 control2;
+	volatile u32 control3;
+	volatile u32 guard_time_prescaler;
 };
 
 // [status](file://spec.pdf#page=547)
