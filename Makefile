@@ -1,8 +1,8 @@
 CC = arm-none-eabi-gcc
 OBJDUMP = arm-none-eabi-objdump
 
-FLAGS = -mcpu=cortex-m4 -nostdlib -mthumb -Wno-builtin-declaration-mismatch -s
-OPT = -Os
+FLAGS = -mcpu=cortex-m4 -nostdlib -mthumb -Wno-builtin-declaration-mismatch -static
+OPT = -Og
 
 BIN_DIR     = ./bin
 SRC_DIR     = ./src

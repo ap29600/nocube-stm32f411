@@ -37,27 +37,30 @@ void reset_handler_procedure(void)
 	memset(&__bss_section_begin, 0, bss_section_size);
 
 	main();
+	default_handler_procedure();
 }
 
-void default_handler_procedure(void) {
+void default_handler_procedure(void)
+{
 	while(1);
 }
 
 u32 interrupt_service_routine_vector[INTERRUPT_SERVICE_ROUTINE_VECTOR_LEN] __attribute__((section(".isr_vector"))) = {
-	(u32)&__stack_end,
-	(u32)&reset_handler_procedure,
-	(u32)&default_handler_procedure,
-	(u32)&default_handler_procedure,
-	(u32)&default_handler_procedure,
-	(u32)&default_handler_procedure,
+	(uintptr_t)&__stack_end,
+	(uintptr_t)&reset_handler_procedure,
+	(uintptr_t)&default_handler_procedure,
+	(uintptr_t)&default_handler_procedure,
+	(uintptr_t)&default_handler_procedure,
+	(uintptr_t)&default_handler_procedure,
 	0,
 	0,
 	0,
 	0,
 	0,
-	(u32)&default_handler_procedure,
-	(u32)&default_handler_procedure,
+	(uintptr_t)&default_handler_procedure,
+	(uintptr_t)&default_handler_procedure,
 	0,
-	(u32)&default_handler_procedure,
-	(u32)&default_handler_procedure,
+	(uintptr_t)&default_handler_procedure,
+	(uintptr_t)&default_handler_procedure,
+	[33] = (uintptr_t)& dma1_stream6_transmission_complete_interrupt_handler,
 }; 

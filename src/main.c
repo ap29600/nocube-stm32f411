@@ -1,22 +1,23 @@
 #include "../include/baremetal.h"
 
-#define DELAY_SECOND 2200000UL
+#define __PROGRAM_START
+#define STM32F411xE
+#include "../vendor/stm32f4xx.h"
 
+#define DELAY_SECOND 2200000UL
 
 void spin_delay (volatile u32 ticks) {
 	while(ticks--);
 }
 
-
 size_t strlen(char const *data)
 {
 	size_t i = 0;
-	for (; data[i]; ++i)
+	for (; data[i] != '\0'; ++i)
 	{
 	}
 	return i;
 }
-
 
 void write(const char *data, size_t size);
 void writeln(const char *data, size_t size)
@@ -25,38 +26,38 @@ void writeln(const char *data, size_t size)
 	write("\r\n", 2);
 }
 
-void USART_debug(u32 word)
+char *u32_to_hex(char *buf, u32 num, size_t max_size)
 {
-
-	write("dbg! 0x", 7);
-
-	char debug_message[8];
-
-	for (size_t i = 0; i < sizeof(debug_message) / sizeof(debug_message[0]); ++i)
+	if (max_size > 9)
 	{
-		debug_message[i] = "0123456789ABCDEF"[(word >> (4 * (7 - i))) & 0xf];
+		max_size = 9;
 	}
-
-	writeln(debug_message, 8); 
+	for (size_t i = 0; i < max_size; ++i)
+	{
+		buf[i] = "0123456789ABCDEF"[num >> 28];
+		num <<= 4;
+	}
+	buf[max_size - 1] = '\0';
+	return buf;
 }
 
 
 char getchar(void)
 {
-	while (!(USART2->status & USART_STATUS__READ_REGISTER_NOT_EMPTY))
+	while (!(USART2->SR & USART_SR_RXNE))
 	{
 	}
-	return USART2->data;
+	return USART2->DR;
 }
 
 
 void putchar(int c)
 {
-	while (!(USART2->status & USART_STATUS__TRANSMIT_REGISTER_EMPTY))
+	while (!(USART2->SR & USART_SR_TXE))
 	{
 	}
-	USART2->data = c;
-	while (!(USART2->status & USART_STATUS__TRANSMISSION_COMPLETE))
+	USART2->DR = c;
+	while (!(USART2->SR & USART_SR_TC))
 	{
 	}
 }
@@ -95,80 +96,105 @@ void write(char const *data, size_t size)
 
 static void USART_enable(u32 baud_rate)
 {
-	RCC->AHB1_peripheral_enable |= RCC_AHB1_PERIPHERAL_ENABLE__GPIOA;
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+	RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
 
-	u32 mode = GPIOA->mode;
-	mode &= ~(0b11 * (GPIO_WPIN(3) | GPIO_WPIN(2)));
-	mode |= GPIO_MODE__ALTERNATE * (GPIO_WPIN(3) | GPIO_WPIN(2));
+	u32 mode = GPIOA->MODER;
+	mode &= ~(GPIO_MODER_MODE3_Msk | GPIO_MODER_MODE2_Msk);
+	mode |= (0b10 << GPIO_MODER_MODE3_Pos) | (0b10 << GPIO_MODER_MODE2_Pos);
+	GPIOA->MODER = mode;
 
-	GPIOA->mode = mode;
+	u32 afr = GPIOA->AFR[0];
+	afr &= ~(GPIO_AFRL_AFSEL3_Msk | GPIO_AFRL_AFSEL2_Msk);
+	afr |= (7 << GPIO_AFRL_AFSEL3_Pos) | (7 << GPIO_AFRL_AFSEL2_Pos);
+	GPIOA->AFR[0] = afr;
 
-	u64 alternate_function = GPIOA->alternate_function;
-	alternate_function &= ~(0b1111 * (GPIO_QPIN(3) | GPIO_QPIN(2)));
-	alternate_function |= 7        * (GPIO_QPIN(3) | GPIO_QPIN(2));
-	GPIOA->alternate_function = alternate_function;
-	RCC->APB1_peripheral_enable |= RCC_APB1_PERIPHERAL_ENABLE__USART2;
+	const u32 uart_divider = 16000000UL / baud_rate;
+	USART2->BRR = uart_divider;
+	USART2->CR1 = USART_CR1_UE | USART_CR1_TE | USART_CR1_RE;
+	USART2->CR2 = USART_CR2_STOP_1;
+	USART2->CR3 = USART_CR3_DMAT;
 
-	const u32 uart_divider = 16000000 / baud_rate;
-	USART2->baud_rate = 0
-		| USART_BAUD_RATE__MANTISSA(uart_divider / 16UL)
-		| USART_BAUD_RATE__FRACTION(uart_divider % 16UL)
-		;
-
-	USART2->control1 = 0
-		| USART_CONTROL1__USART_ENABLE
-		| USART_CONTROL1__TRANSMITTER_ENABLE
-		| USART_CONTROL1__RECEIVER_ENABLE
-		;
-
-	USART2->control2 = 0
-		| USART_CONTROL2__STOP_BITS_1
-		;
-
-	USART2->control3 = 0;
-
-	while (!(USART2->status & USART_STATUS__TRANSMISSION_COMPLETE))
+	while (!(USART2->SR & USART_SR_TC))
 	{
 	}
 }
+// 
+// STATIC INLINE void GPIO_set_reset(struct GPIO_config *GPIO, u32 set_bits, u32 reset_bits)
+// {
+// 	GPIO->bit_set_reset = GPIO_BIT_SET_RESET__SET(set_bits) | GPIO_BIT_SET_RESET__RESET(reset_bits);
+// }
 
-STATIC INLINE void GPIO_set_reset(struct GPIO_config *GPIO, u32 set_bits, u32 reset_bits)
+void dma1_stream6_transmission_complete_interrupt_handler(void)
 {
-	GPIO->bit_set_reset = GPIO_BIT_SET_RESET__SET(set_bits) | GPIO_BIT_SET_RESET__RESET(reset_bits);
+	u32 status = DMA1->HISR;
+
+	if (status & DMA_HISR_TEIF6) // transfer error
+	{
+		DMA1->HIFCR = DMA_HIFCR_CTEIF6; // clear transfer error interrupt
+		GPIOD->BSRR |= GPIO_BSRR_BS12;
+	}
+
+	if (status & DMA_HISR_TCIF6) // transfer complete
+	{
+		DMA1->HIFCR = DMA_HIFCR_CTCIF6; // clear transfer complete interrupt
+		GPIOD->BSRR |= GPIO_BSRR_BS13;
+	}
+
+	if (status & DMA_HISR_HTIF6) // half transfer
+	{
+		DMA1->HIFCR = DMA_HIFCR_CHTIF6; // clear half transfer interrupt
+		GPIOD->BSRR = GPIO_BSRR_BS14;
+	}
+
+	if (status & DMA_HISR_DMEIF6) // direct mode error
+	{
+		DMA1->HIFCR = DMA_HIFCR_CDMEIF6; // clear direct mode error interrupt
+		GPIOD->BSRR = GPIO_BSRR_BS15;
+	}
 }
 
-int main() {
+#define GPIO_MODER_INPUT     0b00UL
+#define GPIO_MODER_OUTPUT    0b01UL
+#define GPIO_MODER_ANALOG    0b10UL
+#define GPIO_MODER_ALTERNATE 0b11UL
+#define GPIO_MODER_SET(__N__, __MODE__) ((u32)(__MODE__) << ((__N__) * 2))
+int main() 
+{
+	RCC->AHB1ENR |= RCC_AHB1ENR_GPIODEN;
+	GPIOD->MODER = GPIO_MODER_SET(12, GPIO_MODER_OUTPUT)
+	             | GPIO_MODER_SET(13, GPIO_MODER_OUTPUT)
+	             | GPIO_MODER_SET(14, GPIO_MODER_OUTPUT)
+		     | GPIO_MODER_SET(15, GPIO_MODER_OUTPUT);
 
-	RCC->AHB1_peripheral_enable |= RCC_AHB1_PERIPHERAL_ENABLE__GPIOD;
-	GPIOD->mode = (GPIO_MODE__OUTPUT * (GPIO_WPIN(15) | GPIO_WPIN(14) | GPIO_WPIN(13) | GPIO_WPIN(12)));
-	GPIOD->output_speed = (GPIO_OUTPUT_SPEED__LOW * (GPIO_WPIN(15) | GPIO_WPIN(14) | GPIO_WPIN(13) | GPIO_WPIN(12)));
+	RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
+
+	char *message = "Hello, world!\n";
+	
+#define DMA_SxCR_CHSEL_N(__CHANNEL__) ((u32)__CHANNEL__ << DMA_SxCR_CHSEL_Pos)
+#define DMA_SxCR_DIR_MEMORY_TO_PERIPHERAL (0b01UL << DMA_SxCR_DIR_Pos)
 
 	USART_enable(9600);
+	NVIC_EnableIRQ(DMA1_Stream6_IRQn);
 
-	char const *prompt = "insert command >> ";
-	size_t size = strlen(prompt);
+	DMA1_Stream6->PAR  = (uintptr_t)& USART2->DR;
+	DMA1_Stream6->M0AR = (uintptr_t) message;
+	DMA1_Stream6->NDTR = strlen(message);
+	DMA1_Stream6->FCR = 0; // direct mode, fifo disabled
+	DMA1_Stream6->CR = DMA_SxCR_CHSEL_N(4)
+	                 | DMA_SxCR_MINC
+		         | DMA_SxCR_DIR_MEMORY_TO_PERIPHERAL
+		         | DMA_SxCR_TCIE
+		         | DMA_SxCR_HTIE
+		         | DMA_SxCR_TEIE
+			 | DMA_SxCR_DMEIE
+			 | DMA_SxCR_EN;
 
 	while (true)
 	{
-		write(prompt, size);
-
-		char data[32];
-		readline(data, sizeof(data) / sizeof(data[0]));
-		switch (data[0])
-		{
-		case '0': 
-			GPIO_set_reset(GPIOD, GPIO_PIN(12), GPIO_PIN(13) | GPIO_PIN(14));
-			break;
-		case '1':
-			GPIO_set_reset(GPIOD, GPIO_PIN(13), GPIO_PIN(12) | GPIO_PIN(14));
-			break;
-		case '2':
-			GPIO_set_reset(GPIOD, GPIO_PIN(14), GPIO_PIN(12) | GPIO_PIN(13));
-			break;
-		default:
-			GPIO_set_reset(GPIOD, 0, GPIO_PIN(12) | GPIO_PIN(13) | GPIO_PIN(14));
-			break;
-
-		}
+		spin_delay(DELAY_SECOND / 10);
+		GPIOD->ODR ^= GPIO_ODR_OD12;
 	}
+
+	return 0;
 }
