@@ -62,5 +62,4 @@ u32 interrupt_service_routine_vector[INTERRUPT_SERVICE_ROUTINE_VECTOR_LEN] __att
 	0,
 	(uintptr_t)&default_handler_procedure,
 	(uintptr_t)&default_handler_procedure,
-	[33] = (uintptr_t)& dma1_stream6_transmission_complete_interrupt_handler,
 }; 

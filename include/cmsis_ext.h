@@ -1,0 +1,47 @@
+#ifndef CMSIS_EXT_H
+#define CMSIS_EXT_H
+
+// suppress generation of the startup routine from CMSIS
+#define __PROGRAM_START
+#define STM32F411xE
+#include "../vendor/stm32f4xx.h"
+
+// GPIO
+
+#define GPIO_MODER_INPUT_N(__PIN__)	(0b00UL << (2 * (__PIN__)))
+#define GPIO_MODER_OUTPUT_N(__PIN__)	(0b01UL << (2 * (__PIN__)))
+#define GPIO_MODER_ANALOG_N(__PIN__)	(0b10UL << (2 * (__PIN__)))
+#define GPIO_MODER_ALTERNATE_N(__PIN__)	(0b11UL << (2 * (__PIN__)))
+
+#define GPIO_BSRR_SET(__N__)		(1 << (GPIO_BSRR_BS0_Pos + (__N__)))
+#define GPIO_BSRR_RESET(__N__)		(1 << (GPIO_BSRR_BR0_Pos + (__N__)))
+
+// DMA
+
+#define DMA_SxCR_CHSEL_N(__CHANNEL__)		((u32)__CHANNEL__ << DMA_SxCR_CHSEL_Pos)
+#define DMA_SxCR_DIR_PERIPHERAL_TO_MEMORY	(0b00UL << DMA_SxCR_DIR_Pos)
+#define DMA_SxCR_DIR_MEMORY_TO_PERIPHERAL	(0b01UL << DMA_SxCR_DIR_Pos)
+#define DMA_SxCR_DIR_MEMORY_TO_MEMORY		(0b10UL << DMA_SxCR_DIR_Pos)
+
+#define DMA_SxCR_MSIZE_8BIT	(0b00 << DMA_SxCR_MSIZE_Pos)
+#define DMA_SxCR_MSIZE_16BIT	(0b01 << DMA_SxCR_MSIZE_Pos)
+#define DMA_SxCR_MSIZE_32BIT	(0b11 << DMA_SxCR_MSIZE_Pos)
+
+#define DMA_SxCR_PSIZE_8BIT	(0b00 << DMA_SxCR_PSIZE_Pos)
+#define DMA_SxCR_PSIZE_16BIT	(0b01 << DMA_SxCR_PSIZE_Pos)
+#define DMA_SxCR_PSIZE_32BIT	(0b11 << DMA_SxCR_PSIZE_Pos)
+
+#define DMA_SxCR_MSIZE_BYTE	DMA_SxCR_MSIZE_8BIT 
+#define DMA_SxCR_MSIZE_HALFWORD	DMA_SxCR_MSIZE_16BIT
+#define DMA_SxCR_MSIZE_WORD	DMA_SxCR_MSIZE_32BIT
+
+#define DMA_SxCR_PSIZE_BYTE	DMA_SxCR_PSIZE_8BIT 
+#define DMA_SxCR_PSIZE_HALFWORD	DMA_SxCR_PSIZE_16BIT
+#define DMA_SxCR_PSIZE_WORD	DMA_SxCR_PSIZE_32BIT
+
+#define DMA_SxCR_PL_PRIORITY_LOW	(0b00 << DMA_SxCR_PL_Pos)
+#define DMA_SxCR_PL_PRIORITY_MEDIUM	(0b01 << DMA_SxCR_PL_Pos)
+#define DMA_SxCR_PL_PRIORITY_HIGH	(0b10 << DMA_SxCR_PL_Pos)
+#define DMA_SxCR_PL_PRIORITY_VERY_HIGH	(0b11 << DMA_SxCR_PL_Pos)
+
+#endif // CMSIS_EXT_H
